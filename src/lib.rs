@@ -139,10 +139,10 @@ impl DiffCoverageMap {
 #[pymethods]
 impl BlurMap {
     #[new]
-    fn init(apix: [f64; 3], origin: [f64; 3], size: [usize; 3], sigma: f64, cutoff: f64) -> Self {
+    fn init(apix: [f64; 3], origin: [f64; 3], size: [usize; 3], cutoff: f64) -> Self {
         let res = Self {
             map: vc::blur::Map::new(origin, apix, size),
-            blurrer: vc::blur::GaussianBlur::new(sigma, cutoff),
+            blurrer: vc::blur::GaussianBlur::new(cutoff),
         };
         res
     }
@@ -151,8 +151,8 @@ impl BlurMap {
         self.map.zero();
     }
 
-    fn add_guassian(&mut self, point: [f64; 3], height: f64) {
-        self.blurrer.add_gaussian(&mut self.map, &point, height)
+    fn add_guassian(&mut self, point: [f64; 3], height: f64, width: f64) {
+        self.blurrer.add_gaussian(&mut self.map, &point, height, width)
     }
 
     fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
