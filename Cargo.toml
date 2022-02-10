@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-voxcov = "0.2.0"
+voxcov = "0.2.1"
 numpy = "0.15.0"
 
 [dependencies.pyo3]
