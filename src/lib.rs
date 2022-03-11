@@ -33,6 +33,11 @@ struct DiffCoverageMap {
 }
 
 #[pyclass]
+struct CoverageMap {
+    inner: vc::coverage::CoverageMap,
+}
+
+#[pyclass]
 struct BlurMap {
     map: vc::blur::Map,
     blurrer: vc::blur::GaussianBlur,
@@ -150,6 +155,30 @@ impl SMOCN {
 }
 
 
+#[pymethods]
+impl CoverageMap {
+    #[new]
+    fn init(apix: [f64; 3], origin: [f64; 3], width: usize) -> Self {
+        Self {
+            inner: vc::coverage::CoverageMap::new(apix, origin, width),
+        }
+    }
+
+    fn add_sphere(&mut self, point: [f64; 3], radius: f64) -> usize {
+        self.inner.add_cov(
+            &vc::geom::Sphere::new(point, radius),
+            &mut |x: [usize; 3]| {
+                ()
+            },
+        )
+    }
+
+    fn zero(&mut self) {
+        self.inner.zero();
+    }
+}
+
+
 
 
 #[pymethods]
@@ -198,12 +227,6 @@ impl BlurMap {
     fn add_guassian(&mut self, point: [f64; 3], height: f64, width: f64) {
         self.blurrer.add_gaussian(&mut self.map, &point, height, width)
     }
-
-    fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
-        let py = self_.py();
-        let res = PyArray3::from_vec3(py, &self_.map.densities).unwrap();
-        Ok(res.to_owned())
-    }
 }
 
 #[pymodule]
@@ -212,6 +235,7 @@ fn voxcov(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<SMOCX>()?;
     m.add_class::<SMOCN>()?;
     m.add_class::<DiffCoverageMap>()?;
+    m.add_class::<CoverageMap>()?;
     m.add_class::<BlurMap>()?;
     Ok(())
 }
