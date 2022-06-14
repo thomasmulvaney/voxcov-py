@@ -121,7 +121,7 @@ jobs:
           python -m pip install --upgrade pip maturin pytest numpy twine        
       - name: windows wheels
         run: |
-          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --out dist --no-sdist --release
+          maturin build -i ${{ matrix.python.interpreter }} --out dist --no-sdist --release
       - name: test install
         run: |
           pip install dist/* --force-reinstall
