@@ -122,9 +122,9 @@ jobs:
       - name: windows wheels
         run: |
           maturin build -i ${{ matrix.python.interpreter }} --out dist --no-sdist --release
-      - name: test install
-        run: |
-          pip install dist/* --force-reinstall
+      #- name: test install
+      #  run: |
+      #    pip install dist/* --force-reinstall
       - name: store artifact
         uses: actions/upload-artifact@v2
         with:
