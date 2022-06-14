@@ -91,8 +91,50 @@ jobs:
           name: py_wheels
           path: dist
 
+  build_windows:
+    name: ${{ matrix.combinations.runs_on }}, Python ${{ matrix.python.py }}
+    runs-on: ${{ matrix.combinations.runs_on }}
+    strategy:
+      matrix:
+        combinations: [
+          { runs_on: 'windows-latest'},
+        ]
+        python: [
+            {py: '3.6', interpreter: "python3.6"},
+            {py: '3.7', interpreter: "python3.7"},
+            {py: '3.8', interpreter: "python3.8"},
+            {py: '3.9', interpreter: "python3.9"},
+            {py: '3.10', interpreter: "python3.10"}
+        ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          default: true
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python.py }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip maturin pytest numpy twine        
+      - name: windows wheels
+        run: |
+          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --out dist --no-sdist --release
+      - name: test install
+        run: |
+          pip install dist/* --force-reinstall
+      - name: store artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: py_wheels
+          path: dist
+
+
+
   upload_all:
-    needs: [build_linux, build_macos]
+    needs: [build_linux, build_macos, build_windows]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/download-artifact@v2
