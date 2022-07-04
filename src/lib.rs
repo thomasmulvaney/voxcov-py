@@ -1,4 +1,4 @@
-use numpy::{PyArray3, PyReadonlyArray3};
+use numpy::{PyArray, PyArray3, PyReadonlyArray3};
 //use ndarray::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::PyFunction;
@@ -13,7 +13,6 @@ struct SMOC {
     sim: vc::blur::RawMap,
 }
 
-
 #[pyclass]
 struct SMOCX {
     inner: vc::score::SMOC<vc::coverage::DiffCoverageMap>,
@@ -25,7 +24,6 @@ struct SMOCN {
     inner: vc::score::SMOC<vc::coverage::NaiveDiffCoverageMap>,
     exp: vc::blur::RawMap,
 }
-
 
 #[pyclass]
 struct DiffCoverageMap {
@@ -154,7 +152,6 @@ impl SMOCN {
     }
 }
 
-
 #[pymethods]
 impl CoverageMap {
     #[new]
@@ -167,9 +164,7 @@ impl CoverageMap {
     fn add_sphere(&mut self, point: [f64; 3], radius: f64) -> usize {
         self.inner.add_cov(
             &vc::geom::Sphere::new(point, radius),
-            &mut |x: [usize; 3]| {
-                ()
-            },
+            &mut |x: [usize; 3]| (),
         )
     }
 
@@ -177,9 +172,6 @@ impl CoverageMap {
         self.inner.zero();
     }
 }
-
-
-
 
 #[pymethods]
 impl DiffCoverageMap {
@@ -224,8 +216,34 @@ impl BlurMap {
         self.map.zero();
     }
 
-    fn add_guassian(&mut self, point: [f64; 3], height: f64, width: f64) {
-        self.blurrer.add_gaussian(&mut self.map, &point, height, width)
+    fn add_gaussian(&mut self, point: [f64; 3], height: f64, width: f64) {
+        self.blurrer
+            .add_gaussian(&mut self.map, &point, height, width)
+    }
+
+    fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
+        let py = self_.py();
+        let mut n = 0;
+        let mut res = PyArray::new(
+            py,
+            (
+                self_.map.densities.size[2],
+                self_.map.densities.size[1],
+                self_.map.densities.size[0],
+            ),
+            false,
+        );
+        for i in 0..self_.map.densities.size[0] {
+            for j in 0..self_.map.densities.size[1] {
+                for k in 0..self_.map.densities.size[2] {
+                    unsafe {
+                        *res.uget_mut((k, j, i)) = self_.map.densities.grid[n];
+                    }
+                    n += 1;
+                }
+            }
+        }
+        Ok(res.to_owned())
     }
 }
 
