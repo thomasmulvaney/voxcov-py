@@ -14,6 +14,13 @@ struct SMOC {
 }
 
 #[pyclass]
+struct SMI {
+    inner: vc::score::SMI<vc::coverage::DiffCoverageMap>,
+    exp: vc::blur::RawMap,
+    sim: vc::blur::RawMap,
+}
+
+#[pyclass]
 struct SMOCX {
     inner: vc::score::SMOC<vc::coverage::DiffCoverageMap>,
     exp: vc::blur::RawMap,
@@ -31,6 +38,11 @@ struct DiffCoverageMap {
 }
 
 #[pyclass]
+struct NaiveDiffCoverageMap {
+    inner: vc::coverage::NaiveDiffCoverageMap,
+}
+
+#[pyclass]
 struct CoverageMap {
     inner: vc::coverage::CoverageMap,
 }
@@ -39,6 +51,53 @@ struct CoverageMap {
 struct BlurMap {
     map: vc::blur::Map,
     blurrer: vc::blur::GaussianBlur,
+}
+
+#[pymethods]
+impl SMI {
+    #[new]
+    fn init(
+        apix: [f64; 3],
+        origin: [f64; 3],
+        width: usize,
+        size: [usize; 3],
+        exp: PyReadonlyArray3<f64>,
+        sim: PyReadonlyArray3<f64>,
+        x_low: f64,
+        x_high: f64,
+        y_low: f64,
+        y_high: f64,
+        x_bins: usize,
+        y_bins: usize,
+    ) -> Self {
+        let exp = exp.to_vec().unwrap();
+        let sim = sim.to_vec().unwrap();
+        Self {
+            inner: vc::score::SMI::<vc::coverage::DiffCoverageMap>::new(
+                apix, origin, width, x_low, x_high, y_low, y_high, x_bins, y_bins,
+            ),
+            exp: vc::blur::RawMap::new(apix, origin, size, exp),
+            sim: vc::blur::RawMap::new(apix, origin, size, sim),
+        }
+    }
+
+    fn add_sphere(&mut self, point: [f64; 3], radius: f64) {
+        self.inner
+            .add_cov(&vc::geom::Sphere::new(point, radius), &self.sim, &self.exp);
+    }
+
+    fn del_sphere(&mut self, point: [f64; 3], radius: f64) {
+        self.inner
+            .del_cov(&vc::geom::Sphere::new(point, radius), &self.sim, &self.exp);
+    }
+
+    fn get_val(&self) -> f64 {
+        self.inner.get_val()
+    }
+
+    fn zero(&mut self) {
+        self.inner.zero()
+    }
 }
 
 #[pymethods]
@@ -200,6 +259,33 @@ impl DiffCoverageMap {
         )
     }
 }
+#[pymethods]
+impl NaiveDiffCoverageMap {
+    #[new]
+    fn init(apix: [f64; 3], origin: [f64; 3], width: usize) -> Self {
+        Self {
+            inner: vc::coverage::NaiveDiffCoverageMap::new(apix, origin, width),
+        }
+    }
+
+    fn add_sphere(&mut self, point: [f64; 3], radius: f64, f: &PyFunction) -> usize {
+        self.inner.add_cov(
+            &vc::geom::Sphere::new(point, radius),
+            &mut |x: [usize; 3]| {
+                f.call1((x,)).expect("Failed to call python function");
+            },
+        )
+    }
+
+    fn del_sphere(&mut self, point: [f64; 3], radius: f64, f: &PyFunction) -> usize {
+        self.inner.del_cov(
+            &vc::geom::Sphere::new(point, radius),
+            &mut |x: [usize; 3]| {
+                f.call1((x,)).expect("Failed to call python function");
+            },
+        )
+    }
+}
 
 #[pymethods]
 impl BlurMap {
@@ -249,10 +335,12 @@ impl BlurMap {
 
 #[pymodule]
 fn voxcov(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<SMI>()?;
     m.add_class::<SMOC>()?;
     m.add_class::<SMOCX>()?;
     m.add_class::<SMOCN>()?;
     m.add_class::<DiffCoverageMap>()?;
+    m.add_class::<NaiveDiffCoverageMap>()?;
     m.add_class::<CoverageMap>()?;
     m.add_class::<BlurMap>()?;
     Ok(())
