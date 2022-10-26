@@ -35,7 +35,7 @@ jobs:
           maturin-version: latest
           command: build
           manylinux: 2010
-          args: -i python${{ matrix.python.py }} --out dist --no-sdist --release
+          args: -i python${{ matrix.python.py }} --out dist --release
       - name: test install
         run: |
           pip install dist/* --force-reinstall
@@ -77,11 +77,11 @@ jobs:
       - name: macos wheels
         if: ${{ matrix.python.universal == 'no'}}
         run: |
-          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --out dist --no-sdist --release
+          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --out dist --release
       - name: universal wheels
         if: ${{ matrix.python.universal != 'no' }}
         run: |
-          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --universal2 --out dist --no-sdist --release
+          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --universal2 --out dist --release
       - name: test install
         run: |
           pip install dist/* --force-reinstall
@@ -121,7 +121,7 @@ jobs:
           python -m pip install --upgrade pip maturin pytest numpy twine        
       - name: windows wheels
         run: |
-          maturin build -i ${{ matrix.python.interpreter }} --out dist --no-sdist --release
+          maturin build -i ${{ matrix.python.interpreter }} --out dist --release
       #- name: test install
       #  run: |
       #    pip install dist/* --force-reinstall
