@@ -3,9 +3,9 @@ use numpy::{PyArray, PyArray3, PyReadonlyArray3};
 use pyo3::prelude::*;
 use pyo3::types::PyFunction;
 use voxcov as vc;
+use voxcov::bfactor::BfactorEstimator;
 use voxcov::blur::AddGaussianToMap;
 use voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
-use voxcov::bfactor::{BfactorEstimator};
 
 #[pyclass]
 struct SMOC {
@@ -14,12 +14,10 @@ struct SMOC {
     sim: vc::blur::RawMap,
 }
 
-
 #[pyclass]
 struct Bfactor {
     inner: vc::bfactor::BfactorEstimator,
 }
-
 
 #[pyclass]
 struct SMI {
@@ -66,7 +64,6 @@ struct BlurMap {
     blurrer: vc::blur::GaussianBlur,
 }
 
-
 #[pymethods]
 impl Bfactor {
     #[new]
@@ -74,18 +71,25 @@ impl Bfactor {
         apix: [f64; 3],
         origin: [f64; 3],
         size: [usize; 3],
-        exp: PyReadonlyArray3<f64>) -> Self {
-	    let map = vc::blur::Map::new(origin, apix, size);
-	    let rmap = vc::blur::RawMap::new(origin, apix, size, exp.to_vec().unwrap());
-	    Self { inner: BfactorEstimator::new(4f64, rmap, map) }
-	}
+        exp: PyReadonlyArray3<f64>,
+    ) -> Self {
+        let map = vc::blur::Map::new(origin, apix, size);
+        let rmap = vc::blur::RawMap::new(origin, apix, size, exp.to_vec().unwrap());
+        Self {
+            inner: BfactorEstimator::new(4f64, rmap, map),
+        }
+    }
 
     fn zero(&mut self) {
-	self.inner.zero()
+        self.inner.zero()
+    }
+
+    fn likelihood(&mut self) -> f64 {
+        self.inner.likelihood()
     }
 
     fn normalize(&mut self) {
-	self.inner.normalize()
+        self.inner.normalize()
     }
 
     fn add_gaussian(&mut self, point: [f64; 3], height: f64, width: f64) {
@@ -94,6 +98,10 @@ impl Bfactor {
 
     fn bfactor(&mut self, point: [f64; 3], height: f64, width: f64) -> f64 {
         self.inner.bfactor(&point, height, width)
+    }
+
+    fn mean(&mut self, point: [f64; 3], height: f64, width: f64) -> [f64; 3] {
+        self.inner.mean(&point, height, width)
     }
 }
 
@@ -415,7 +423,7 @@ impl BlurMap {
             for j in 0..self_.map.densities.size[1] {
                 for k in 0..self_.map.densities.size[2] {
                     unsafe {
-			let v = self_.map.densities.grid[n];
+                        let v = self_.map.densities.grid[n];
                         *res.uget_mut((k, j, i)) = v;
                     }
                     n += 1;
