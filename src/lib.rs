@@ -3,7 +3,7 @@ use numpy::{PyArray, PyArray3, PyReadonlyArray3};
 use pyo3::prelude::*;
 use pyo3::types::PyFunction;
 use voxcov as vc;
-use voxcov::bfactor::BfactorEstimator;
+use voxcov::bfactor::{BfactorEstimator, Mixture};
 use voxcov::blur::AddGaussianToMap;
 use voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
 
@@ -17,6 +17,11 @@ struct SMOC {
 #[pyclass]
 struct Bfactor {
     inner: vc::bfactor::BfactorEstimator,
+}
+
+#[pyclass]
+struct MixtureModel {
+    inner: vc::bfactor::Mixture,
 }
 
 #[pyclass]
@@ -62,6 +67,88 @@ struct CoverageMap {
 struct BlurMap {
     map: vc::blur::Map,
     blurrer: vc::blur::GaussianBlur,
+}
+
+#[pymethods]
+impl MixtureModel {
+    #[new]
+    fn init(
+        apix: [f64; 3],
+        origin: [f64; 3],
+        size: [usize; 3],
+        exp: PyReadonlyArray3<f64>,
+    ) -> Self {
+        let map = vc::blur::Map::new(origin, apix, size);
+        let rmap = vc::blur::RawMap::new(origin, apix, size, exp.to_vec().unwrap());
+        Self {
+            inner: Mixture::new(map, rmap),
+        }
+    }
+
+    fn add_gaussian(&mut self, mean: [f64; 3], sigma: f64, weight: f64) {
+        self.inner.add_gaussian(mean, sigma, weight);
+    }
+
+    fn step(&mut self) {
+        self.inner.step()
+    }
+
+    fn sigma(&self, idx: usize) -> f64 {
+        self.inner.sigma(idx)
+    }
+
+    fn set_sigma(&mut self, idx: usize, sigma: f64) {
+        self.inner.set_sigma(idx, sigma);
+    }
+
+    fn set_mean(&mut self, idx: usize, mean: [f64; 3]) {
+        self.inner.set_mean(idx, mean);
+    }
+    fn mean(&self, idx: usize) -> [f64; 3] {
+        self.inner.mean(idx)
+    }
+
+    fn logprob(&self) -> f64 {
+        0f64
+    }
+
+    fn logprob_idx(&self, idx: usize) -> f64 {
+        0f64
+    }
+
+    fn noise(&self) -> f64 {
+        self.inner.noise()
+    }
+
+    fn set_noise(&mut self, noise: f64) {
+        self.inner.set_noise(noise)
+    }
+
+    fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
+        let py = self_.py();
+        let mut n = 0;
+        let mut res = PyArray::new(
+            py,
+            (
+                self_.inner.data.densities.size[2],
+                self_.inner.data.densities.size[1],
+                self_.inner.data.densities.size[0],
+            ),
+            false,
+        );
+        for i in 0..self_.inner.data.densities.size[0] {
+            for j in 0..self_.inner.data.densities.size[1] {
+                for k in 0..self_.inner.data.densities.size[2] {
+                    unsafe {
+                        let v = self_.inner.data.densities.grid[n];
+                        *res.uget_mut((k, j, i)) = v;
+                    }
+                    n += 1;
+                }
+            }
+        }
+        Ok(res.to_owned())
+    }
 }
 
 #[pymethods]
@@ -445,5 +532,6 @@ fn voxcov(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<CoverageMap>()?;
     m.add_class::<BlurMap>()?;
     m.add_class::<Bfactor>()?;
+    m.add_class::<MixtureModel>()?;
     Ok(())
 }
