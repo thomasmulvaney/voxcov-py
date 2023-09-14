@@ -3,6 +3,7 @@ use numpy::{PyArray, PyArray3, PyReadonlyArray3};
 use pyo3::prelude::*;
 use pyo3::types::PyFunction;
 use voxcov as vc;
+use voxcov::bfactor::Mixture;
 use voxcov::blur::AddGaussianToMap;
 use voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
 
@@ -14,10 +15,20 @@ struct SMOC {
 }
 
 #[pyclass]
+struct MixtureModel {
+    inner: vc::bfactor::Mixture,
+}
+
+#[pyclass]
 struct SMI {
     inner: vc::score::SMI<vc::coverage::DiffCoverageMap>,
     exp: vc::blur::RawMap,
     sim: vc::blur::RawMap,
+}
+#[pyclass]
+struct SMIX {
+    inner: vc::score::SMI<vc::coverage::DiffCoverageMap>,
+    exp: vc::blur::RawMap,
 }
 
 #[pyclass]
@@ -51,6 +62,92 @@ struct CoverageMap {
 struct BlurMap {
     map: vc::blur::Map,
     blurrer: vc::blur::GaussianBlur,
+}
+
+#[pymethods]
+impl MixtureModel {
+    #[new]
+    fn init(
+        apix: [f64; 3],
+        origin: [f64; 3],
+        size: [usize; 3],
+        exp: PyReadonlyArray3<f64>,
+    ) -> Self {
+        let map = vc::blur::Map::new(origin, apix, size);
+        let rmap = vc::blur::RawMap::new(origin, apix, size, exp.to_vec().unwrap());
+        Self {
+            inner: Mixture::new(map, rmap),
+        }
+    }
+
+    fn add_gaussian(&mut self, mean: [f64; 3], sigma: f64, weight: f64) {
+        self.inner.add_gaussian(mean, sigma, weight);
+    }
+
+    fn step(&mut self) {
+        self.inner.step()
+    }
+
+    fn sigma(&self, idx: usize) -> f64 {
+        self.inner.sigma(idx)
+    }
+
+    fn set_sigma(&mut self, idx: usize, sigma: f64) {
+        self.inner.set_sigma(idx, sigma);
+    }
+
+    fn set_mean(&mut self, idx: usize, mean: [f64; 3]) {
+        self.inner.set_mean(idx, mean);
+    }
+    fn mean(&self, idx: usize) -> [f64; 3] {
+        self.inner.mean(idx)
+    }
+
+    fn logprob(&self) -> f64 {
+        0f64
+    }
+
+    fn logprob_idx(&self, idx: usize) -> f64 {
+        0f64
+    }
+
+    fn noise(&self) -> f64 {
+        self.inner.noise()
+    }
+
+    fn moc(&self) -> f64 {
+        self.inner.moc()
+    }
+
+    fn set_noise(&mut self, noise: f64) {
+        self.inner.set_noise(noise)
+    }
+
+    fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
+        let py = self_.py();
+        let mut n = 0;
+        let mut res = PyArray::new(
+            py,
+            (
+                self_.inner.data.densities.size[2],
+                self_.inner.data.densities.size[1],
+                self_.inner.data.densities.size[0],
+            ),
+            false,
+        );
+        for i in 0..self_.inner.data.densities.size[0] {
+            for j in 0..self_.inner.data.densities.size[1] {
+                for k in 0..self_.inner.data.densities.size[2] {
+                    unsafe {
+                        let v = self_.inner.data.densities.grid[n];
+                        *res.uget_mut((k, j, i)) = v;
+                    }
+                    n += 1;
+                }
+            }
+        }
+        Ok(res.to_owned())
+    }
 }
 
 #[pymethods]
@@ -128,6 +225,50 @@ impl SMOC {
     fn del_sphere(&mut self, point: [f64; 3], radius: f64) {
         self.inner
             .del_cov(&vc::geom::Sphere::new(point, radius), &self.sim, &self.exp);
+    }
+
+    fn get_val(&self) -> f64 {
+        self.inner.get_val()
+    }
+
+    fn zero(&mut self) {
+        self.inner.zero()
+    }
+}
+
+#[pymethods]
+impl SMIX {
+    #[new]
+    fn init(
+        apix: [f64; 3],
+        origin: [f64; 3],
+        width: usize,
+        size: [usize; 3],
+        exp: PyReadonlyArray3<f64>,
+        x_low: f64,
+        x_high: f64,
+        y_low: f64,
+        y_high: f64,
+        x_bins: usize,
+        y_bins: usize,
+    ) -> Self {
+        let exp = exp.to_vec().unwrap();
+        Self {
+            inner: vc::score::SMI::<vc::coverage::DiffCoverageMap>::new(
+                apix, origin, width, x_low, x_high, y_low, y_high, x_bins, y_bins,
+            ),
+            exp: vc::blur::RawMap::new(apix, origin, size, exp),
+        }
+    }
+
+    fn add_sphere(&mut self, point: [f64; 3], radius: f64, sim: &BlurMap) {
+        self.inner
+            .add_cov(&vc::geom::Sphere::new(point, radius), &sim.map, &self.exp);
+    }
+
+    fn del_sphere(&mut self, point: [f64; 3], radius: f64, sim: &BlurMap) {
+        self.inner
+            .del_cov(&vc::geom::Sphere::new(point, radius), &sim.map, &self.exp);
     }
 
     fn get_val(&self) -> f64 {
@@ -302,6 +443,10 @@ impl BlurMap {
         self.map.zero();
     }
 
+    fn normalize(&mut self) {
+        self.map.densities.normalize();
+    }
+
     fn add_gaussian(&mut self, point: [f64; 3], height: f64, width: f64) {
         self.blurrer
             .add_gaussian(&mut self.map, &point, height, width)
@@ -323,7 +468,8 @@ impl BlurMap {
             for j in 0..self_.map.densities.size[1] {
                 for k in 0..self_.map.densities.size[2] {
                     unsafe {
-                        *res.uget_mut((k, j, i)) = self_.map.densities.grid[n];
+                        let v = self_.map.densities.grid[n];
+                        *res.uget_mut((k, j, i)) = v;
                     }
                     n += 1;
                 }
@@ -343,5 +489,6 @@ fn voxcov(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<NaiveDiffCoverageMap>()?;
     m.add_class::<CoverageMap>()?;
     m.add_class::<BlurMap>()?;
+    m.add_class::<MixtureModel>()?;
     Ok(())
 }
