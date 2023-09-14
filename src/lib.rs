@@ -3,7 +3,7 @@ use numpy::{PyArray, PyArray3, PyReadonlyArray3};
 use pyo3::prelude::*;
 use pyo3::types::PyFunction;
 use voxcov as vc;
-use voxcov::bfactor::{BfactorEstimator, Mixture};
+use voxcov::bfactor::Mixture;
 use voxcov::blur::AddGaussianToMap;
 use voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
 
@@ -12,11 +12,6 @@ struct SMOC {
     inner: vc::score::SMOC<vc::coverage::DiffCoverageMap>,
     exp: vc::blur::RawMap,
     sim: vc::blur::RawMap,
-}
-
-#[pyclass]
-struct Bfactor {
-    inner: vc::bfactor::BfactorEstimator,
 }
 
 #[pyclass]
@@ -120,6 +115,10 @@ impl MixtureModel {
         self.inner.noise()
     }
 
+    fn moc(&self) -> f64 {
+        self.inner.moc()
+    }
+
     fn set_noise(&mut self, noise: f64) {
         self.inner.set_noise(noise)
     }
@@ -148,47 +147,6 @@ impl MixtureModel {
             }
         }
         Ok(res.to_owned())
-    }
-}
-
-#[pymethods]
-impl Bfactor {
-    #[new]
-    fn init(
-        apix: [f64; 3],
-        origin: [f64; 3],
-        size: [usize; 3],
-        exp: PyReadonlyArray3<f64>,
-    ) -> Self {
-        let map = vc::blur::Map::new(origin, apix, size);
-        let rmap = vc::blur::RawMap::new(origin, apix, size, exp.to_vec().unwrap());
-        Self {
-            inner: BfactorEstimator::new(4f64, rmap, map),
-        }
-    }
-
-    fn zero(&mut self) {
-        self.inner.zero()
-    }
-
-    fn likelihood(&mut self) -> f64 {
-        self.inner.likelihood()
-    }
-
-    fn normalize(&mut self) {
-        self.inner.normalize()
-    }
-
-    fn add_gaussian(&mut self, point: [f64; 3], height: f64, width: f64) {
-        self.inner.add_gaussian(&point, height, width)
-    }
-
-    fn bfactor(&mut self, point: [f64; 3], height: f64, width: f64) -> f64 {
-        self.inner.bfactor(&point, height, width)
-    }
-
-    fn mean(&mut self, point: [f64; 3], height: f64, width: f64) -> [f64; 3] {
-        self.inner.mean(&point, height, width)
     }
 }
 
@@ -531,7 +489,6 @@ fn voxcov(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<NaiveDiffCoverageMap>()?;
     m.add_class::<CoverageMap>()?;
     m.add_class::<BlurMap>()?;
-    m.add_class::<Bfactor>()?;
     m.add_class::<MixtureModel>()?;
     Ok(())
 }
