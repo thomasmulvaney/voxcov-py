@@ -26,7 +26,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.combinations.rust }}
           default: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python.py }}
       - name: linux wheels
@@ -54,11 +54,11 @@ jobs:
           { runs_on: 'macos-11', rust: "aarch64-apple-darwin" },
         ]
         python: [
-            {py: '3.6', interpreter: "python3.6", universal: 'no'},
-            {py: '3.7', interpreter: "python3.7", universal: 'no'},
             {py: '3.8', interpreter: "python3.8"},
             {py: '3.9', interpreter: "python3.9"},
-            {py: '3.10', interpreter: "python3.10"}
+            {py: '3.10', interpreter: "python3.10"},
+            {py: '3.11', interpreter: "python3.11"},
+            {py: '3.12', interpreter: "python3.12"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -68,7 +68,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.combinations.rust }}
           default: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python.py }}
       - name: Install dependencies
@@ -100,11 +100,11 @@ jobs:
           { runs_on: 'windows-latest'},
         ]
         python: [
-            {py: '3.6', interpreter: "python3.6"},
-            {py: '3.7', interpreter: "python3.7"},
             {py: '3.8', interpreter: "python3.8"},
             {py: '3.9', interpreter: "python3.9"},
-            {py: '3.10', interpreter: "python3.10"}
+            {py: '3.10', interpreter: "python3.10"},
+            {py: '3.11', interpreter: "python3.11"},
+            {py: '3.12', interpreter: "python3.12"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -113,7 +113,7 @@ jobs:
           profile: minimal
           toolchain: stable
           default: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python.py }}
       - name: Install dependencies
