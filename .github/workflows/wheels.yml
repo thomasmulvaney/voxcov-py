@@ -79,7 +79,7 @@ jobs:
       - name: universal wheels
         if: ${{ matrix.python.universal != 'no' }}
         run: |
-          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --universal2 --out dist --release
+          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --target universal2-apple-darwin --out dist --release
       - name: test install
         run: |
           pip install dist/* --force-reinstall
