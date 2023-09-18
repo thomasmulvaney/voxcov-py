@@ -1,6 +1,11 @@
+[project]
+name = "voxcov"
+
 [build-system]
 requires = ["maturin~=1.2.1"]
 build-backend = "maturin"
 
-[package]
-name = "voxcov"
+
+[tool.maturin]
+module-name = "voxcov"
+
