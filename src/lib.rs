@@ -432,7 +432,6 @@ impl NaiveDiffCoverageMap {
 impl BlurMap {
     #[new]
     fn init(apix: [f64; 3], origin: [f64; 3], size: [usize; 3], cutoff: f64) -> Self {
-        
         Self {
             map: vc::blur::Map::new(origin, apix, size),
             blurrer: vc::blur::GaussianBlur::new(cutoff),
@@ -468,10 +467,8 @@ impl BlurMap {
             for i in 0..self_.map.densities.size[0] {
                 for j in 0..self_.map.densities.size[1] {
                     for k in 0..self_.map.densities.size[2] {
-                        unsafe {
-                            let v = self_.map.densities.grid[n];
-                            *res.uget_mut((k, j, i)) = v;
-                        }
+                        let v = self_.map.densities.grid[n];
+                        *res.uget_mut((k, j, i)) = v;
                         n += 1;
                     }
                 }

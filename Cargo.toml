@@ -1,6 +1,6 @@
 [package]
 name = "voxcov-py"
-version = "0.2.9a"
+version = "0.2.8"
 authors = ["Thomas Mulvaney <mulvaney@mailbox.org>"]
 edition = "2021"
 
