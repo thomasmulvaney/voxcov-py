@@ -1,11 +1,11 @@
 use numpy::{PyArray, PyArray3, PyReadonlyArray3};
 //use ndarray::prelude::*;
+use ::voxcov as vc;
+use ::voxcov::bfactor::Mixture;
+use ::voxcov::blur::AddGaussianToMap;
+use ::voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
+use numpy::PyArrayMethods;
 use pyo3::prelude::*;
-use pyo3::types::PyFunction;
-use voxcov as vc;
-use voxcov::bfactor::Mixture;
-use voxcov::blur::AddGaussianToMap;
-use voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
 
 #[pyclass]
 struct SMOC {
@@ -107,7 +107,7 @@ impl MixtureModel {
         0f64
     }
 
-    fn logprob_idx(&self, idx: usize) -> f64 {
+    fn logprob_idx(&self, _idx: usize) -> f64 {
         0f64
     }
 
@@ -123,30 +123,30 @@ impl MixtureModel {
         self.inner.set_noise(noise)
     }
 
-    fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
+    fn to_numpy(self_: PyRefMut<'_, Self>) -> Bound<'_, PyArray3<f64>> {
         let py = self_.py();
         let mut n = 0;
-        let mut res = PyArray::new(
-            py,
-            (
-                self_.inner.data.densities.size[2],
-                self_.inner.data.densities.size[1],
-                self_.inner.data.densities.size[0],
-            ),
-            false,
-        );
-        for i in 0..self_.inner.data.densities.size[0] {
-            for j in 0..self_.inner.data.densities.size[1] {
-                for k in 0..self_.inner.data.densities.size[2] {
-                    unsafe {
+        unsafe {
+            let res = PyArray::new(
+                py,
+                (
+                    self_.inner.data.densities.size[2],
+                    self_.inner.data.densities.size[1],
+                    self_.inner.data.densities.size[0],
+                ),
+                false,
+            );
+            for i in 0..self_.inner.data.densities.size[0] {
+                for j in 0..self_.inner.data.densities.size[1] {
+                    for k in 0..self_.inner.data.densities.size[2] {
                         let v = self_.inner.data.densities.grid[n];
                         *res.uget_mut((k, j, i)) = v;
+                        n += 1;
                     }
-                    n += 1;
                 }
             }
+            res.to_owned()
         }
-        Ok(res.to_owned())
     }
 }
 
@@ -364,7 +364,7 @@ impl CoverageMap {
     fn add_sphere(&mut self, point: [f64; 3], radius: f64) -> usize {
         self.inner.add_cov(
             &vc::geom::Sphere::new(point, radius),
-            &mut |x: [usize; 3]| (),
+            &mut |_x: [usize; 3]| (),
         )
     }
 
@@ -382,7 +382,7 @@ impl DiffCoverageMap {
         }
     }
 
-    fn add_sphere(&mut self, point: [f64; 3], radius: f64, f: &PyFunction) -> usize {
+    fn add_sphere(&mut self, point: [f64; 3], radius: f64, f: &Bound<'_, PyAny>) -> usize {
         self.inner.add_cov(
             &vc::geom::Sphere::new(point, radius),
             &mut |x: [usize; 3]| {
@@ -391,7 +391,7 @@ impl DiffCoverageMap {
         )
     }
 
-    fn del_sphere(&mut self, point: [f64; 3], radius: f64, f: &PyFunction) -> usize {
+    fn del_sphere(&mut self, point: [f64; 3], radius: f64, f: &Bound<'_, PyAny>) -> usize {
         self.inner.del_cov(
             &vc::geom::Sphere::new(point, radius),
             &mut |x: [usize; 3]| {
@@ -409,7 +409,7 @@ impl NaiveDiffCoverageMap {
         }
     }
 
-    fn add_sphere(&mut self, point: [f64; 3], radius: f64, f: &PyFunction) -> usize {
+    fn add_sphere(&mut self, point: [f64; 3], radius: f64, f: &Bound<'_, PyAny>) -> usize {
         self.inner.add_cov(
             &vc::geom::Sphere::new(point, radius),
             &mut |x: [usize; 3]| {
@@ -418,7 +418,7 @@ impl NaiveDiffCoverageMap {
         )
     }
 
-    fn del_sphere(&mut self, point: [f64; 3], radius: f64, f: &PyFunction) -> usize {
+    fn del_sphere(&mut self, point: [f64; 3], radius: f64, f: &Bound<'_, PyAny>) -> usize {
         self.inner.del_cov(
             &vc::geom::Sphere::new(point, radius),
             &mut |x: [usize; 3]| {
@@ -432,11 +432,10 @@ impl NaiveDiffCoverageMap {
 impl BlurMap {
     #[new]
     fn init(apix: [f64; 3], origin: [f64; 3], size: [usize; 3], cutoff: f64) -> Self {
-        let res = Self {
+        Self {
             map: vc::blur::Map::new(origin, apix, size),
             blurrer: vc::blur::GaussianBlur::new(cutoff),
-        };
-        res
+        }
     }
 
     fn zero(&mut self) {
@@ -452,35 +451,35 @@ impl BlurMap {
             .add_gaussian(&mut self.map, &point, height, width)
     }
 
-    fn to_numpy(self_: PyRefMut<Self>) -> PyResult<Py<PyArray3<f64>>> {
+    fn to_numpy(self_: PyRefMut<'_, Self>) -> Bound<'_, PyArray3<f64>> {
         let py = self_.py();
         let mut n = 0;
-        let mut res = PyArray::new(
-            py,
-            (
-                self_.map.densities.size[2],
-                self_.map.densities.size[1],
-                self_.map.densities.size[0],
-            ),
-            false,
-        );
-        for i in 0..self_.map.densities.size[0] {
-            for j in 0..self_.map.densities.size[1] {
-                for k in 0..self_.map.densities.size[2] {
-                    unsafe {
+        unsafe {
+            let res = PyArray::new(
+                py,
+                (
+                    self_.map.densities.size[2],
+                    self_.map.densities.size[1],
+                    self_.map.densities.size[0],
+                ),
+                false,
+            );
+            for i in 0..self_.map.densities.size[0] {
+                for j in 0..self_.map.densities.size[1] {
+                    for k in 0..self_.map.densities.size[2] {
                         let v = self_.map.densities.grid[n];
                         *res.uget_mut((k, j, i)) = v;
+                        n += 1;
                     }
-                    n += 1;
                 }
             }
+            res.to_owned()
         }
-        Ok(res.to_owned())
     }
 }
 
 #[pymodule]
-fn voxcov(_py: Python, m: &PyModule) -> PyResult<()> {
+fn voxcov(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SMI>()?;
     m.add_class::<SMOC>()?;
     m.add_class::<SMOCX>()?;
