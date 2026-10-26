@@ -6,7 +6,6 @@ use ::voxcov::blur::AddGaussianToMap;
 use ::voxcov::coverage::{AddCoverage, DelCoverage, MapLike};
 use numpy::PyArrayMethods;
 use pyo3::prelude::*;
-use pyo3::types::PyFunction;
 
 #[pyclass]
 struct SMOC {
@@ -108,7 +107,7 @@ impl MixtureModel {
         0f64
     }
 
-    fn logprob_idx(&self, idx: usize) -> f64 {
+    fn logprob_idx(&self, _idx: usize) -> f64 {
         0f64
     }
 
@@ -124,11 +123,11 @@ impl MixtureModel {
         self.inner.set_noise(noise)
     }
 
-    fn to_numpy(self_: PyRefMut<Self>) -> Bound<'_, PyArray3<f64>> {
+    fn to_numpy(self_: PyRefMut<'_, Self>) -> Bound<'_, PyArray3<f64>> {
         let py = self_.py();
         let mut n = 0;
         unsafe {
-            let mut res = PyArray::new(
+            let res = PyArray::new(
                 py,
                 (
                     self_.inner.data.densities.size[2],
@@ -365,7 +364,7 @@ impl CoverageMap {
     fn add_sphere(&mut self, point: [f64; 3], radius: f64) -> usize {
         self.inner.add_cov(
             &vc::geom::Sphere::new(point, radius),
-            &mut |x: [usize; 3]| (),
+            &mut |_x: [usize; 3]| (),
         )
     }
 
@@ -433,11 +432,11 @@ impl NaiveDiffCoverageMap {
 impl BlurMap {
     #[new]
     fn init(apix: [f64; 3], origin: [f64; 3], size: [usize; 3], cutoff: f64) -> Self {
-        let res = Self {
+        
+        Self {
             map: vc::blur::Map::new(origin, apix, size),
             blurrer: vc::blur::GaussianBlur::new(cutoff),
-        };
-        res
+        }
     }
 
     fn zero(&mut self) {
@@ -457,7 +456,7 @@ impl BlurMap {
         let py = self_.py();
         let mut n = 0;
         unsafe {
-            let mut res = PyArray::new(
+            let res = PyArray::new(
                 py,
                 (
                     self_.map.densities.size[2],

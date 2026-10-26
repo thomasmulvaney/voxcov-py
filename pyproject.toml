@@ -1,8 +1,9 @@
 [project]
 name = "voxcov"
+version = "0.2.9a"
 
 [build-system]
-requires = ["maturin~=1.2.1"]
+requires = ["maturin~=1.15.0"]
 build-backend = "maturin"
 
 
