@@ -50,7 +50,7 @@ jobs:
     strategy:
       matrix:
         combinations: [
-          { runs_on: 'macos-11', rust: "aarch64-apple-darwin" },
+          { runs_on: 'macos-latest', rust: "aarch64-apple-darwin" },
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
