@@ -1,6 +1,6 @@
 [project]
 name = "voxcov"
-version = "0.2.9a"
+version = "0.2.9"
 
 [build-system]
 requires = ["maturin>=1.0,<2.0"]
