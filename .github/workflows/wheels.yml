@@ -13,9 +13,6 @@ jobs:
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
-            {py: '3.11', interpreter: "python3.11"},
-            {py: '3.12', interpreter: "python3.12"},
-            {py: '3.13', interpreter: "python3.13"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -54,9 +51,6 @@ jobs:
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
-            {py: '3.11', interpreter: "python3.11"},
-            {py: '3.12', interpreter: "python3.12"},
-            {py: '3.13', interpreter: "python3.13"},
         ]
     steps:
       - uses: actions/checkout@v2
@@ -99,9 +93,6 @@ jobs:
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
-            {py: '3.11', interpreter: "python3.11"},
-            {py: '3.12', interpreter: "python3.12"},
-            {py: '3.13', interpreter: "python3.13"}
         ]
     steps:
       - uses: actions/checkout@v2
