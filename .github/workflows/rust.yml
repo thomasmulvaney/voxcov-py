@@ -20,3 +20,10 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Test maturin build
+      uses: PyO3/maturin-action@v1
+      with:
+        command: build
+        args: --release -i python3.10
