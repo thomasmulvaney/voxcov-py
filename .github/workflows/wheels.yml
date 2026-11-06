@@ -116,6 +116,7 @@ jobs:
     - uses: actions/download-artifact@v8
       with:
         path: dist
+        merge-artifacts: true 
     - name: Show downloaded files
       run: ls -lh dist
     - name: Publish to PyPI
