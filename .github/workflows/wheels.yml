@@ -115,8 +115,9 @@ jobs:
     steps:
     - uses: actions/download-artifact@v4
       with:
-        name: py_wheels
         path: dist
+    - name: Show downloaded files
+      run: ls -lh dist
     - name: Publish to PyPI
       if: "!github.event.release.prerelease"
       uses: pypa/gh-action-pypi-publish@release/v1
