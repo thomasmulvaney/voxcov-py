@@ -13,9 +13,6 @@ jobs:
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
-            {py: '3.11', interpreter: "python3.11"},
-            {py: '3.12', interpreter: "python3.12"},
-            {py: '3.13', interpreter: "python3.13"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -29,12 +26,10 @@ jobs:
         with:
           python-version: ${{ matrix.python.py }}
       - name: linux wheels
-        uses: messense/maturin-action@v1
+        uses: PyO3/maturin-action@v1
         with:
-          maturin-version: latest
-          command: build
-          manylinux: 2014
-          args: -i python${{ matrix.python.py }} --out dist --release
+           command: build
+           args: --release -i python3.10 --out dist
       - name: test install
         run: |
           pip install dist/* --force-reinstall
@@ -54,9 +49,6 @@ jobs:
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
-            {py: '3.11', interpreter: "python3.11"},
-            {py: '3.12', interpreter: "python3.12"},
-            {py: '3.13', interpreter: "python3.13"},
         ]
     steps:
       - uses: actions/checkout@v2
@@ -69,20 +61,11 @@ jobs:
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python.py }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip maturin pytest numpy twine        
       - name: macos wheels
-        if: ${{ matrix.python.universal == 'no'}}
-        run: |
-          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --out dist --release
-      - name: universal wheels
-        if: ${{ matrix.python.universal != 'no' }}
-        run: |
-          RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" OPENMP_STATIC=1 maturin build -i ${{ matrix.python.interpreter }} --target universal2-apple-darwin --out dist --release
-      - name: test install
-        run: |
-          pip install dist/* --force-reinstall
+        uses: PyO3/maturin-action@v1
+        with:
+           command: build
+           args: --release -i python3.10 --out dist
       - name: store artifact
         uses: actions/upload-artifact@v4
         with:
@@ -99,9 +82,6 @@ jobs:
         ]
         python: [
             {py: '3.10', interpreter: "python3.10"},
-            {py: '3.11', interpreter: "python3.11"},
-            {py: '3.12', interpreter: "python3.12"},
-            {py: '3.13', interpreter: "python3.13"}
         ]
     steps:
       - uses: actions/checkout@v2
@@ -113,12 +93,11 @@ jobs:
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python.py }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip maturin pytest numpy twine        
-      - name: windows wheels
-        run: |
-          maturin build -i ${{ matrix.python.interpreter }} --out dist --release
+      - name: macos wheels
+        uses: PyO3/maturin-action@v1
+        with:
+           command: build
+           args: --release -i python3.10 --out dist
       #- name: test install
       #  run: |
       #    pip install dist/* --force-reinstall
@@ -134,7 +113,7 @@ jobs:
     needs: [build_linux, build_macos, build_windows]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
         name: py_wheels
         path: dist
